@@ -3,21 +3,21 @@ import typing
 import sqlalchemy
 
 import config as settings
+from src.models.core import BaseModel
 
 ModelClass = typing.TypeVar(
     "ModelClass",
-    bound=settings.Base,
+    bound=type[BaseModel],
 )
 
 
 class BaseRepository(typing.Generic[ModelClass]):
     """Base repository class for interactive with database."""
 
-    model: ModelClass
+    model: type[ModelClass]
 
     async def get_list(
         self,
-        query: sqlalchemy.Select,
     ) -> typing.Iterable[ModelClass]:
         """Return list of records from database."""
         session = await settings.session_generator().asend(None)
@@ -25,6 +25,17 @@ class BaseRepository(typing.Generic[ModelClass]):
             sqlalchemy.select(self.model),
         )
         return raw_result.scalars().all()
+
+    async def create_one(
+        self,
+        **data: dict,
+    ) -> ModelClass:
+        """Create isntance."""
+        session = await settings.session_generator().asend(None)
+        raw_result = await session.execute(
+            sqlalchemy.insert(self.model).values(**data),
+        )
+        return raw_result.scalar_one()
 
     async def retrieve_one(
         self,
